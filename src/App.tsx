@@ -723,6 +723,18 @@ export default function App() {
   };
 
   const fetchWithFallback = async (url: string, options: any = {}) => {
+    // 1. Tenta conexão direta primeiro (RD e AD suportam CORS nativamente)
+    try {
+      const directRes = await fetch(url, options);
+      // Retorna a resposta se for sucesso ou se for um erro da própria API (ex: 401, 403)
+      if (directRes.ok || directRes.status >= 400) {
+        return directRes;
+      }
+    } catch (e) {
+      // Falha de CORS ou rede, continua para os proxies
+    }
+
+    // 2. Fallback para proxies caso a conexão direta falhe
     for (const proxy of proxies) {
       try {
         const targetUrl = `${proxy}${encodeURIComponent(url)}`;
@@ -737,13 +749,13 @@ export default function App() {
 
   const rdFetch = async (endpoint: string, apiKey: string, options: RequestInit = {}) => {
     const separator = endpoint.includes('?') ? '&' : '?';
-    const url = `https://api.real-debrid.com/rest/1.0${endpoint}${separator}auth_token=${apiKey}`;
+    const url = `https://api.real-debrid.com/rest/1.0${endpoint}${separator}auth_token=${apiKey.trim()}`;
     return fetchWithFallback(url, options);
   };
 
   const adFetch = async (endpoint: string, apiKey: string, options: RequestInit = {}) => {
     const separator = endpoint.includes('?') ? '&' : '?';
-    const url = `https://api.alldebrid.com/v4${endpoint}${separator}agent=embedflix&apikey=${apiKey}`;
+    const url = `https://api.alldebrid.com/v4${endpoint}${separator}agent=embedflix&apikey=${apiKey.trim()}`;
     return fetchWithFallback(url, options);
   };
 
