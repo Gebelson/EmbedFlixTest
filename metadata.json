@@ -1,0 +1,5 @@
+{
+  "name": "EmbedFlix",
+  "description": "A futuristic, high-fidelity media viewing SPA with WebTorrent and HLS support.",
+  "requestFramePermissions": []
+}
