@@ -741,11 +741,17 @@ export default function App() {
     return fetchWithFallback(url, options);
   };
 
+  const adFetch = async (endpoint: string, apiKey: string, options: RequestInit = {}) => {
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const url = `https://api.alldebrid.com/v4${endpoint}${separator}agent=embedflix&apikey=${apiKey}`;
+    return fetchWithFallback(url, options);
+  };
+
   const checkAllDebrid = async (infoHash: string, apiKey: string) => {
     addLog(`[AD] Iniciando fluxo AllDebrid para infoHash...`);
     try {
       const magnet = `magnet:?xt=urn:btih:${infoHash}`;
-      const uploadRes = await fetch(`https://api.alldebrid.com/v4/magnet/upload?agent=embedflix&apikey=${apiKey}&magnets[]=${encodeURIComponent(magnet)}`);
+      const uploadRes = await adFetch(`/magnet/upload?magnets[]=${encodeURIComponent(magnet)}`, apiKey);
       const uploadData = await uploadRes.json();
       
       if (uploadData.status !== 'success' || !uploadData.data.magnets[0].id) {
@@ -756,7 +762,7 @@ export default function App() {
       const magnetId = uploadData.data.magnets[0].id;
       addLog(`[AD] Magnet adicionado (ID: ${magnetId}). Verificando status...`);
       
-      const statusRes = await fetch(`https://api.alldebrid.com/v4/magnet/status?agent=embedflix&apikey=${apiKey}&id=${magnetId}`);
+      const statusRes = await adFetch(`/magnet/status?id=${magnetId}`, apiKey);
       const statusData = await statusRes.json();
       
       if (statusData.status !== 'success' || statusData.data.magnets.status !== 'Ready') {
@@ -774,7 +780,7 @@ export default function App() {
       const largestLink = links.reduce((prev: any, curr: any) => (prev.size > curr.size) ? prev : curr);
       addLog(`[AD] Link selecionado: ${largestLink.filename}. Desbloqueando...`);
       
-      const unlockRes = await fetch(`https://api.alldebrid.com/v4/link/unlock?agent=embedflix&apikey=${apiKey}&link=${encodeURIComponent(largestLink.link)}`);
+      const unlockRes = await adFetch(`/link/unlock?link=${encodeURIComponent(largestLink.link)}`, apiKey);
       const unlockData = await unlockRes.json();
       
       if (unlockData.status !== 'success') {
@@ -898,7 +904,7 @@ export default function App() {
     }
     addLog('[AD] Testando conexão com a API AllDebrid...');
     try {
-      const res = await fetch(`https://api.alldebrid.com/v4/user?agent=embedflix&apikey=${adApiKey}`);
+      const res = await adFetch('/user', adApiKey);
       const data = await res.json();
       if (data.status === 'success') {
         addLog(`[AD] Conectado! Usuário: ${data.data.user.username} | Premium: ${data.data.user.isPremium ? 'Sim' : 'Não'}`);
@@ -1289,6 +1295,10 @@ export default function App() {
                   </button>
                 </div>
                 
+                <div className="mb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Addons Instalados</p>
+                </div>
+
                 <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
                   {installedAddons.length === 0 ? (
                     <p className="text-[10px] text-slate-500 text-center py-2">Nenhum addon instalado.</p>
@@ -1299,12 +1309,28 @@ export default function App() {
                           <span className="text-xs font-bold text-slate-300 truncate">{addon.name}</span>
                           <span className="text-[9px] text-slate-500 font-mono truncate">{addon.url}</span>
                         </div>
-                        <button 
-                          onClick={() => removeAddon(addon.url)}
-                          className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-md transition-colors shrink-0"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(addon.url).then(() => {
+                                addLog(`[SYS] URL do addon ${addon.name} copiada.`);
+                              }).catch(err => {
+                                addLog(`[ERR] Falha ao copiar URL: ${err}`);
+                              });
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-[#00ffcc] hover:bg-[#00ffcc]/10 rounded-md transition-colors"
+                            title="Copiar URL do manifest"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => removeAddon(addon.url)}
+                            className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-md transition-colors"
+                            title="Remover addon"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}
